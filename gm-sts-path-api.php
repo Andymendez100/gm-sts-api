@@ -10,7 +10,7 @@
  * Plugin Name:  Gm STS Path API
 
  * Description:   This plugin creates a custom REST API endpoint that retrieves data from the GM STS Path API.
- * Version:       2.0.0
+ * Version:       2.0.1
  * Author:        Andy Mendez
  * License:       GPLv2
  */
@@ -19,7 +19,7 @@
      die('You cannot be here');
  }
 
- add_action('rest_api_init', 'create_rest_endpoint');
+add_action('rest_api_init', 'create_rest_endpoint');
   
 function create_rest_endpoint(){
 
@@ -76,7 +76,7 @@ function handle_post_request($request) {
       $response = make_post_request('https://www.centerlearning.com/api/gmapi/path/getstspaths', $args);
 
       // If the request failed, try again with a new token
-      if (is_wp_error($response)) {
+      if (is_wp_error($response) || wp_remote_retrieve_response_code($response) == 401) {
           $token = request_new_token();
           $args['body'] = json_encode([
               'token' => trim($token['token'], '"'),
@@ -88,12 +88,16 @@ function handle_post_request($request) {
 
       $body = wp_remote_retrieve_body($response);
       $gmAPIResponse = json_decode($body);
+      $statusCode = wp_remote_retrieve_response_code($response);
 
-      return new WP_REST_Response($gmAPIResponse, 200);
+
+      return new WP_REST_Response($gmAPIResponse, $statusCode);
   } catch (Exception $e) {
       return new WP_REST_Response(['message' => $e->getMessage()], 500);
   }
 }
+
+
   
    function request_new_token() {
       // Set the request arguments
